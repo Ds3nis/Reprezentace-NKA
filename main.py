@@ -4,6 +4,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 
 
+input_string = ""
 nfa_transitions: dict = {
     "A": {"a": "A1", "b": "C1", "c": "C"},
     "A1": {"b": "B"},
@@ -16,7 +17,7 @@ nfa_transitions: dict = {
     "S1": {"a": "S"},
 }
 current_statenfa = "S"
-alphabet: str = "abcABC"
+alphabet: str = "abc"
 nfa_nodes: list = [("S"), ("B1"), ("C1"), ("A1"), ("C2"), ("S1"), ("B"), ("C"), ("A")]
 current_state = "B"
 
@@ -85,7 +86,7 @@ pos = {
 
 
 
-def build_graph(current_state, possible_states):
+def build_graph(possible_states = []):
     color_map = []
     for node in G.nodes:
         if node in possible_states:
@@ -119,77 +120,98 @@ def build_graph(current_state, possible_states):
         edge_labels=edge_labels,
         label_pos=0.5,
         font_color="black",
-        font_size=10,
+        font_size=13,
         font_family="Times New Roman",
         ax=ax,
     )
     canvas.draw()
 
 
-def on_key(event):
+def process_input(symbol):
     global current_state
-    key = event.char
-    if key not in alphabet:
-        print(f"Недопустимий символ: {key}")
-        return
-
-    if key == "q":
-        print("Програма завершена.")
-        
-        
+    global input_string
     relevant_states = nx.get_node_attributes(D, "relevant_states")
-    next_state = dfa_transitions[current_state].get(key)
+    next_state = dfa_transitions[current_state].get(symbol)
     print(next_state)
     if next_state:
+        input_string += symbol
+        update_displayed_text()
         print(current_state)
         current_state = next_state
         print(relevant_states[current_state])
         possible_states = relevant_states[current_state]
-        build_graph(current_state, possible_states)
+        build_graph(possible_states)
     else:
-        print("Перехід не визначено.")
+        print("Přechod není definován.")
 
-    print(f"Поточний стан: {current_state}")
+    print(f"Aktuální stav: {current_state}")
+  
     if current_state in accepting_statesdfa:
-        print("Частина рядка приймається автоматом.")
-
-    if current_state in accepting_statesdfa:
-        print("Рядок прийнятий автоматом.")
+        print("Řetězec akceptovaný automatem.")
+        update_displayed_text("Řetězec akceptovaný automatem.")
     else:
-        print("Рядок не прийнятий автоматом.")
+        print("Řetěz není akceptován automatem.")
+        update_displayed_text("Řetěz není akceptován strojem.")
+        
 
 
-# Налаштування Tkinter
+def on_key(event):
+    global current_state
+    key = event.char.lower()
+    if key not in alphabet:
+        print(f"Neplatný znak: {key}")
+        return
+    
+    process_input(key)
+        
+    
+
+
+
 root = tk.Tk()
 root.title("NFA Visualization")
 
+# Полотно для графіка
 fig, ax = plt.subplots(figsize=(6, 6))
 canvas = FigureCanvasTkAgg(fig, master=root)
-canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+canvas_widget = canvas.get_tk_widget()
+canvas_widget.grid(row=0, column=0, columnspan=2, sticky="nsew")  # Розтягування на всю ширину
 
-build_graph(current_state, [])
+build_graph()
 
-# Обробка клавіш
-root.bind("<Key>", on_key)
+def update_displayed_text(accept = ""):
+    input_label.config(text=f"Vstupní řetězec: {input_string}")
+    input_label1.config(text=f"Akceptovaný řetězec: {accept}")
 
-print("Натискайте клавіші ('a', 'b', 'c') для введення символів. Натисніть 'q' для виходу.")
 def restart():
-    global current_state
-    current_state = "B"  # Сбрасываем в начальное состояние
-    build_graph(current_state, [])  # Обновляем граф
-    print("Автомат перезапущен. Текущее состояние: S")
-
-# Кнопка Restart
-restart_button = tk.Button(root, text="Restart", command=restart, font=("Times New Roman", 14))
-restart_button.pack(pady=10)
+    global current_state, input_string
+    current_state = "B" 
+    input_string = "" 
+    update_displayed_text()
+    build_graph([]) 
+    print("Automat byl restartován. Aktuální stav: B")
 
 def exit_program():
-    print("Программа завершена.")
+    print("Program je dokončený.")
     root.quit()
-    root.destroy()  # Закрытие окна tkinter
+    root.destroy()
 
-# Кнопка Exit
+input_label = tk.Label(root, text="Vstupní řetězec: ", font=("Times New Roman", 14), anchor="w")
+input_label.grid(row=1, column=0, sticky="w", padx=10, pady=10)
+
+input_label1 = tk.Label(root, text="Akceptovaný řetězec: ", font=("Times New Roman", 14), anchor="w")
+input_label1.grid(row=2, column=0, sticky="w", padx=10, pady=10)
+
+restart_button = tk.Button(root, text="Restart", command=restart, font=("Times New Roman", 14))
+restart_button.grid(row=1, column=1, sticky="e", padx=10, pady=10)
+
+
 exit_button = tk.Button(root, text="Exit", command=exit_program, font=("Times New Roman", 14))
-exit_button.pack(pady=10)
+exit_button.grid(row=2, column=1, sticky="e", padx=10, pady=10)
+
+root.bind("<Key>", on_key)
+root.grid_rowconfigure(0, weight=1) 
+root.grid_columnconfigure(0, weight=1)  
+root.grid_columnconfigure(1, weight=1)
 
 root.mainloop()
